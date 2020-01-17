@@ -4,9 +4,9 @@
 /*
   Copyright (c) 2003-2015 Tommi Junttila
   Released under the GNU Lesser General Public License version 3.
-  
+
   This file is part of bliss.
-  
+
   bliss is free software: you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation, version 3 of the License.
@@ -233,7 +233,7 @@ public:
    * of bliss as well as on some other options (for instance, the splitting
    * heuristic selected with bliss::Graph::set_splitting_heuristic()).
    */
-  const unsigned int* canonical_form(Stats& stats,
+  std::vector<unsigned int>::iterator canonical_form(Stats& stats,
 				     void (*hook)(void* user_param,
 						  unsigned int n,
 						  const unsigned int* aut),
@@ -266,7 +266,7 @@ public:
   /**
    * Get a hash value for the graph.
    * \return  the hash value
-   */ 
+   */
   virtual unsigned int get_hash() = 0;
 
   /**
@@ -416,18 +416,20 @@ protected:
    */
   virtual bool is_equitable() const = 0;
 
-  unsigned int *first_path_labeling;
+  std::vector<unsigned int> first_path_labeling_vec;
+  std::vector<unsigned int>::iterator first_path_labeling;
   unsigned int *first_path_labeling_inv;
   Orbit         first_path_orbits;
   unsigned int *first_path_automorphism;
 
-  unsigned int *best_path_labeling;
+  std::vector<unsigned int> best_path_labeling_vec;
+  std::vector<unsigned int>::iterator best_path_labeling;
   unsigned int *best_path_labeling_inv;
   Orbit         best_path_orbits;
   unsigned int *best_path_automorphism;
 
-  void update_labeling(unsigned int * const lab);
-  void update_labeling_and_its_inverse(unsigned int * const lab,
+  void update_labeling(std::vector<unsigned int>::iterator lab);
+  void update_labeling_and_its_inverse(std::vector<unsigned int>::iterator lab,
 				       unsigned int * const lab_inv);
   void update_orbit_information(Orbit &o, const unsigned int *perm);
 
@@ -631,7 +633,7 @@ protected:
   void make_initial_equitable_partition();
 
   void initialize_certificate();
-  
+
   bool is_automorphism(unsigned int* const perm);
 
 
@@ -695,7 +697,7 @@ public:
 
   /**
    * \copydoc AbstractGraph::get_hash()
-   */ 
+   */
   virtual unsigned int get_hash();
 
   /**
@@ -708,7 +710,7 @@ public:
    */
   Graph* permute(const unsigned int* const perm) const;
   Graph* permute(const std::vector<unsigned int>& perm) const;
-  
+
   /**
    * Add a new vertex with color \a color in the graph and return its index.
    */
@@ -744,7 +746,7 @@ public:
    * for both graphs.
    */
   void set_splitting_heuristic(const SplittingHeuristic shs) {sh = shs; }
-  
+
 
 };
 
@@ -934,14 +936,14 @@ public:
 
   /**
    * \copydoc AbstractGraph::get_hash()
-   */ 
+   */
   virtual unsigned int get_hash();
 
   /**
    * Return the number of vertices in the graph.
    */
   unsigned int get_nof_vertices() const {return vertices.size(); }
-  
+
   /**
    * Add a new vertex with color 'color' in the graph and return its index.
    */
@@ -981,7 +983,7 @@ public:
   /**
    * \copydoc AbstractGraph::permute(const unsigned int* const perm) const
    */
-  Digraph* permute(const unsigned int* const perm) const;  
+  Digraph* permute(const unsigned int* const perm) const;
   Digraph* permute(const std::vector<unsigned int>& perm) const;
 };
 
