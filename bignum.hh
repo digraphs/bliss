@@ -4,9 +4,9 @@
 /*
   Copyright (c) 2003-2015 Tommi Junttila
   Released under the GNU Lesser General Public License version 3.
-  
+
   This file is part of bliss.
-  
+
   bliss is free software: you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation, version 3 of the License.
@@ -28,7 +28,7 @@
 #include <cstdio>
 #include "defs.hh"
 
-namespace bliss {
+namespace bliss_digraphs {
 
 /**
  * \brief A very simple class for big integers (or approximation of them).
@@ -100,6 +100,6 @@ public:
 
 #endif
 
-} //namespace bliss
+} //namespace bliss_digraphs
 
 #endif

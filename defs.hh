@@ -7,9 +7,9 @@
 /*
   Copyright (c) 2003-2015 Tommi Junttila
   Released under the GNU Lesser General Public License version 3.
-  
+
   This file is part of bliss.
-  
+
   bliss is free software: you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation, version 3 of the License.
@@ -23,7 +23,7 @@
   along with bliss.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-namespace bliss {
+namespace bliss_digraphs {
 
 /**
  * The version number of bliss.
@@ -56,7 +56,7 @@ void fatal_error(const char* fmt, ...);
 #define BLISS_VERIFY_EQUITABLEDNESS
 #endif
 
-} // namespace bliss
+} // namespace bliss_digraphs
 
 
 

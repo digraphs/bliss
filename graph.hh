@@ -21,11 +21,11 @@
 */
 
 /**
- * \namespace bliss
- * The namespace bliss contains all the classes and functions of the bliss
+ * \namespace bliss_digraphs
+ * The namespace bliss_digraphs contains all the classes and functions of the bliss
  * tool except for the C programming language API.
  */
-namespace bliss {
+namespace bliss_digraphs {
   class AbstractGraph;
 }
 
@@ -39,7 +39,9 @@ namespace bliss {
 #include "bignum.hh"
 #include "uintseqhash.hh"
 
-namespace bliss {
+namespace bliss_digraphs {
+  typedef std::vector<unsigned int>::iterator uint_pointer_substitute;
+  typedef std::vector<unsigned int>::const_iterator uint_pointer_to_const_substitute;
 
 /**
  * \brief Statistics returned by the bliss search algorithm.
@@ -233,7 +235,7 @@ public:
    * of bliss as well as on some other options (for instance, the splitting
    * heuristic selected with bliss::Graph::set_splitting_heuristic()).
    */
-  std::vector<unsigned int>::iterator canonical_form(Stats& stats,
+  uint_pointer_to_const_substitute canonical_form(Stats& stats,
 				     void (*hook)(void* user_param,
 						  unsigned int n,
 						  const unsigned int* aut),
@@ -361,8 +363,8 @@ protected:
   static const unsigned int long_prune_options_max_stored_auts = 100;
 
   unsigned int long_prune_max_stored_autss;
-  std::vector<std::vector<bool> *> long_prune_fixed;
-  std::vector<std::vector<bool> *> long_prune_mcrs;
+  std::vector<std::vector<bool> >  long_prune_fixed;
+  std::vector<std::vector<bool> > long_prune_mcrs;
   std::vector<bool> long_prune_temp;
   unsigned int long_prune_begin;
   unsigned int long_prune_end;
@@ -374,7 +376,7 @@ protected:
    * Release the memory allocated for "long prune" data structures.
    */
   void long_prune_deallocate();
-  void long_prune_add_automorphism(const unsigned int *aut);
+  void long_prune_add_automorphism(uint_pointer_to_const_substitute aut);
   std::vector<bool>& long_prune_get_fixed(const unsigned int index);
   std::vector<bool>& long_prune_allocget_fixed(const unsigned int index);
   std::vector<bool>& long_prune_get_mcrs(const unsigned int index);
@@ -417,26 +419,32 @@ protected:
   virtual bool is_equitable() const = 0;
 
   std::vector<unsigned int> first_path_labeling_vec;
-  std::vector<unsigned int>::iterator first_path_labeling;
-  unsigned int *first_path_labeling_inv;
-  Orbit         first_path_orbits;
-  unsigned int *first_path_automorphism;
+  uint_pointer_substitute             first_path_labeling;
+  std::vector<unsigned int> first_path_labeling_inv_vec;
+  uint_pointer_substitute             first_path_labeling_inv;
+  Orbit                     first_path_orbits;
+
+  std::vector<unsigned int> first_path_automorphism_vec;
+  uint_pointer_substitute             first_path_automorphism;
 
   std::vector<unsigned int> best_path_labeling_vec;
-  std::vector<unsigned int>::iterator best_path_labeling;
-  unsigned int *best_path_labeling_inv;
+  uint_pointer_substitute             best_path_labeling;
+  std::vector<unsigned int> best_path_labeling_inv_vec;
+  uint_pointer_substitute             best_path_labeling_inv;
   Orbit         best_path_orbits;
-  unsigned int *best_path_automorphism;
 
-  void update_labeling(std::vector<unsigned int>::iterator lab);
-  void update_labeling_and_its_inverse(std::vector<unsigned int>::iterator lab,
-				       unsigned int * const lab_inv);
-  void update_orbit_information(Orbit &o, const unsigned int *perm);
+  std::vector<unsigned int> best_path_automorphism_vec;
+  uint_pointer_substitute             best_path_automorphism;
 
-  void reset_permutation(unsigned int *perm);
+  void update_labeling(uint_pointer_substitute  const lab);
+  void update_labeling_and_its_inverse(uint_pointer_substitute  const lab,
+				       uint_pointer_substitute  const lab_inv);
+  void update_orbit_information(Orbit &o, uint_pointer_substitute perm);
+
+  void reset_permutation(uint_pointer_substitute perm);
 
   /* Mainly for debugging purposes */
-  virtual bool is_automorphism(unsigned int* const perm);
+  virtual bool is_automorphism(uint_pointer_substitute const perm);
 
   std::vector<unsigned int> certificate_current_path;
   std::vector<unsigned int> certificate_first_path;
@@ -515,10 +523,6 @@ protected:
    * The number of vertices in the component \a cr_component
    */
   unsigned int cr_component_elements;
-
-
-
-
 };
 
 
@@ -575,12 +579,23 @@ protected:
 
     unsigned int color;
     std::vector<unsigned int> edges;
+    void clear() {
+      edges.clear();
+    }
     unsigned int nof_edges() const {return edges.size(); }
   };
   std::vector<Vertex> vertices;
   void sort_edges();
   void remove_duplicate_edges();
-
+public:
+  void clear() {
+    for (std::vector<Vertex>::iterator it = vertices.begin();
+         it < vertices.end();
+         ++it) {
+      it->clear();
+    }
+  }
+protected:
   /** \internal
    * Partition independent invariant.
    * Returns the color of the vertex.
@@ -807,8 +822,21 @@ protected:
     std::vector<unsigned int> edges_in;
     unsigned int nof_edges_in() const {return edges_in.size(); }
     unsigned int nof_edges_out() const {return edges_out.size(); }
+    void clear() {
+      edges_out.clear();
+      edges_in.clear();
+    }
   };
   std::vector<Vertex> vertices;
+
+  void clear() {
+    for (std::vector<Vertex>::iterator it = vertices.begin();
+         it < vertices.end();
+         ++it) {
+      it->clear();
+    }
+  }
+
   void remove_duplicate_edges();
 
   /** \internal

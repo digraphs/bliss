@@ -1,12 +1,14 @@
 #ifndef BLISS_ORBIT_HH
 #define BLISS_ORBIT_HH
 
+#include <vector>
+
 /*
   Copyright (c) 2003-2015 Tommi Junttila
   Released under the GNU Lesser General Public License version 3.
-  
+
   This file is part of bliss.
-  
+
   bliss is free software: you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation, version 3 of the License.
@@ -20,7 +22,7 @@
   along with bliss.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-namespace bliss {
+namespace bliss_digraphs {
 
 /** \internal
  * \brief A class for representing orbit information.
@@ -43,8 +45,14 @@ class Orbit
     unsigned int size;
   };
 
-  OrbitEntry *orbits;
-  OrbitEntry **in_orbit;
+  typedef std::vector<OrbitEntry>::iterator orbit_entry_pointer_substitute;
+  std::vector<OrbitEntry>                   orbits_vec;
+  orbit_entry_pointer_substitute orbits;
+
+  typedef std::vector<OrbitEntry *>::iterator
+               orbit_entry_pointer_pointer_substitute;
+  std::vector<OrbitEntry*> in_orbit_vec;
+  orbit_entry_pointer_pointer_substitute in_orbit;
   unsigned int nof_elements;
   unsigned int _nof_orbits;
   void merge_orbits(OrbitEntry *o1, OrbitEntry *o2);
@@ -106,6 +114,6 @@ public:
   unsigned int nof_orbits() const {return _nof_orbits; }
 };
 
-} // namespace bliss
+} // namespace bliss_digraphs
 
 #endif

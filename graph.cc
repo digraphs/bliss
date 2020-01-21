@@ -31,7 +31,7 @@
 */
 
 
-namespace bliss {
+namespace bliss_digraphs {
 
 #define _INTERNAL_ERROR() fatal_error("%s:%d: internal error",__FILE__,__LINE__)
 #define _OUT_OF_MEMORY() fatal_error("%s:%d: out of memory",__FILE__,__LINE__)
@@ -44,13 +44,8 @@ namespace bliss {
 
 
 AbstractGraph::AbstractGraph()
-  : first_path_labeling_vec()
 {
   /* Initialize stuff */
-  first_path_labeling_inv = 0;
-  best_path_labeling_inv = 0;
-  first_path_automorphism = 0;
-  best_path_automorphism = 0;
   in_search = false;
 
   /* Default value for using "long prune" */
@@ -71,26 +66,6 @@ AbstractGraph::AbstractGraph()
 
 AbstractGraph::~AbstractGraph()
 {
-  if(first_path_labeling_inv) {
-    free(first_path_labeling_inv); first_path_labeling_inv = 0; }
-  if(best_path_labeling_inv) {
-    free(best_path_labeling_inv); best_path_labeling_inv = 0; }
-  if(first_path_automorphism) {
-    free(first_path_automorphism); first_path_automorphism = 0; }
-  if(best_path_automorphism) {
-    free(best_path_automorphism); best_path_automorphism = 0; }
-  for (int i = 0; i != long_prune_fixed.size(); i++) {
-    std::vector<bool> * ptr = long_prune_fixed[i];
-    if (ptr != NULL) {
-      delete ptr;
-    }
-  }
-  for (int i = 0; i != long_prune_mcrs.size(); i++) {
-    std::vector<bool> * ptr = long_prune_mcrs[i];
-    if (ptr != NULL) {
-      delete ptr;
-    }
-  }
   if (p.cr_enabled) {
     p.cr_free();
   }
@@ -176,13 +151,13 @@ AbstractGraph::do_refine_to_equitable()
         {
           if(in_search) {
             const unsigned int index = cell->first;
-            if(first_path_automorphism)
+            if(!first_path_automorphism_vec.empty())
               {
                 /* Build the (potential) automorphism on-the-fly */
                 first_path_automorphism[first_path_labeling_inv[index]] =
                   p.elements[index];
               }
-            if(best_path_automorphism)
+            if(!best_path_automorphism_vec.empty())
               {
                 /* Build the (potential) automorphism on-the-fly */
                 best_path_automorphism[best_path_labeling_inv[index]] =
@@ -237,10 +212,10 @@ AbstractGraph::do_refine_to_equitable()
  * then \a labeling will map 0 to 1, 1 to 2, and 2 to 0.
  */
 void
-AbstractGraph::update_labeling(std::vector<unsigned int>::iterator labeling)
+AbstractGraph::update_labeling(uint_pointer_substitute const labeling)
 {
   const unsigned int N = get_nof_vertices();
-  unsigned int* ep = p.elements;
+  uint_pointer_substitute ep = p.elements;
   for(unsigned int i = 0; i < N; i++, ep++)
     labeling[*ep] = i;
 }
@@ -250,12 +225,12 @@ AbstractGraph::update_labeling(std::vector<unsigned int>::iterator labeling)
  * is also produced and assigned to \a labeling_inv.
  */
 void
-AbstractGraph::update_labeling_and_its_inverse(std::vector<unsigned int>::iterator labeling,
-                                               unsigned int* const labeling_inv)
+AbstractGraph::update_labeling_and_its_inverse(uint_pointer_substitute const labeling,
+                                               uint_pointer_substitute const labeling_inv)
 {
   const unsigned int N = get_nof_vertices();
-  unsigned int* ep = p.elements;
-  unsigned int* clip = labeling_inv;
+  uint_pointer_substitute  ep = p.elements;
+  uint_pointer_substitute clip = labeling_inv;
 
   for(unsigned int i = 0; i < N; ) {
     labeling[*ep] = i;
@@ -281,7 +256,7 @@ AbstractGraph::update_labeling_and_its_inverse(std::vector<unsigned int>::iterat
  * Reset the permutation \a perm to the identity permutation.
  */
 void
-AbstractGraph::reset_permutation(unsigned int* perm)
+AbstractGraph::reset_permutation(uint_pointer_substitute perm)
 {
   const unsigned int N = get_nof_vertices();
   for(unsigned int i = 0; i < N; i++, perm++)
@@ -289,7 +264,7 @@ AbstractGraph::reset_permutation(unsigned int* perm)
 }
 
 bool
-AbstractGraph::is_automorphism(unsigned int* const perm)
+AbstractGraph::is_automorphism(uint_pointer_substitute const perm)
 {
   _INTERNAL_ERROR();
   return false;
@@ -437,25 +412,23 @@ AbstractGraph::long_prune_init()
     long_prune_max_stored_autss = nof_fitting_in_max_mem;
 
   long_prune_deallocate();
-  long_prune_fixed.resize(N, 0);
-  long_prune_mcrs.resize(N, 0);
+  long_prune_fixed.resize(N);
+  long_prune_mcrs.resize(N);
   long_prune_begin = 0;
   long_prune_end = 0;
 }
 
-void
-AbstractGraph::long_prune_deallocate()
-{
-  while(!long_prune_fixed.empty())
-    {
-      delete long_prune_fixed.back();
-      long_prune_fixed.pop_back();
-    }
-  while(!long_prune_mcrs.empty())
-    {
-      delete long_prune_mcrs.back();
-      long_prune_mcrs.pop_back();
-    }
+void AbstractGraph::long_prune_deallocate() {
+  for (std::vector<std::vector<bool> >::iterator it = long_prune_fixed.begin();
+       it < long_prune_fixed.end();
+       ++it) {
+    it->clear();
+  }
+  for (std::vector<std::vector<bool> >::iterator it = long_prune_mcrs.begin();
+       it < long_prune_mcrs.end();
+       ++it) {
+    it->clear();
+  }
 }
 
 void
@@ -463,46 +436,42 @@ AbstractGraph::long_prune_swap(const unsigned int i, const unsigned int j)
 {
   const unsigned int real_i = i % long_prune_max_stored_autss;
   const unsigned int real_j = j % long_prune_max_stored_autss;
-  std::vector<bool>* tmp = long_prune_fixed[real_i];
-  long_prune_fixed[real_i] = long_prune_fixed[real_j];
-  long_prune_fixed[real_j] = tmp;
-  tmp = long_prune_mcrs[real_i];
-  long_prune_mcrs[real_i] = long_prune_mcrs[real_j];
-  long_prune_mcrs[real_j] = tmp;
+  std::swap(long_prune_fixed[real_i], long_prune_fixed[real_j]);
+  std::swap(long_prune_mcrs[real_i], long_prune_mcrs[real_j]);
 }
 
 std::vector<bool>&
 AbstractGraph::long_prune_allocget_fixed(const unsigned int index)
 {
   const unsigned int i = index % long_prune_max_stored_autss;
-  if(!long_prune_fixed[i])
-    long_prune_fixed[i] = new std::vector<bool>(get_nof_vertices());
-  return *long_prune_fixed[i];
+  if(long_prune_fixed[i].size() < get_nof_vertices())
+    long_prune_fixed[i].resize(get_nof_vertices());
+  return long_prune_fixed[i];
 }
 
 std::vector<bool>&
 AbstractGraph::long_prune_get_fixed(const unsigned int index)
 {
-  return *long_prune_fixed[index % long_prune_max_stored_autss];
+  return long_prune_fixed[index % long_prune_max_stored_autss];
 }
 
 std::vector<bool>&
 AbstractGraph::long_prune_allocget_mcrs(const unsigned int index)
 {
   const unsigned int i = index % long_prune_max_stored_autss;
-  if(!long_prune_mcrs[i])
-    long_prune_mcrs[i] = new std::vector<bool>(get_nof_vertices());
-  return *long_prune_mcrs[i];
+  if(long_prune_mcrs[i].size() < get_nof_vertices())
+    long_prune_mcrs[i].resize(get_nof_vertices());
+  return long_prune_mcrs[i];
 }
 
 std::vector<bool>&
 AbstractGraph::long_prune_get_mcrs(const unsigned int index)
 {
-  return *long_prune_mcrs[index % long_prune_max_stored_autss];
+  return long_prune_mcrs[index % long_prune_max_stored_autss];
 }
 
 void
-AbstractGraph::long_prune_add_automorphism(const unsigned int* aut)
+AbstractGraph::long_prune_add_automorphism(uint_pointer_to_const_substitute aut)
 {
   if(long_prune_max_stored_autss == 0)
     return;
@@ -553,7 +522,7 @@ AbstractGraph::long_prune_add_automorphism(const unsigned int* aut)
  *-------------------------------------------------------------------------*/
 
 void
-AbstractGraph::update_orbit_information(Orbit& o, const unsigned int* perm)
+AbstractGraph::update_orbit_information(Orbit& o, uint_pointer_substitute perm)
 {
   const unsigned int N = get_nof_vertices();
   for(unsigned int i = 0; i < N; i++)
@@ -649,16 +618,14 @@ AbstractGraph::search(const bool canonical, Stats& stats)
   stats.nof_leaf_nodes = 1;
 
   /* Free old first path data structures */
-  if(first_path_labeling_inv) {
-    free(first_path_labeling_inv); first_path_labeling_inv = 0; }
-  if(first_path_automorphism) {
-    free(first_path_automorphism); first_path_automorphism = 0; }
+  first_path_labeling_vec.clear();
+  first_path_labeling_inv_vec.clear();
+  first_path_automorphism_vec.clear();
 
   /* Free old best path data structures */
-  if(best_path_labeling_inv) {
-    free(best_path_labeling_inv); best_path_labeling_inv = 0; }
-  if(best_path_automorphism) {
-    free(best_path_automorphism); best_path_automorphism = 0; }
+  best_path_labeling_vec.clear();
+  best_path_labeling_inv_vec.clear();
+  best_path_automorphism_vec.clear();
 
   if(N == 0)
     {
@@ -699,8 +666,11 @@ AbstractGraph::search(const bool canonical, Stats& stats)
   /*
    * Allocate space for the "first path" and "best path" labelings
    */
+  first_path_labeling_vec.clear();
   first_path_labeling_vec.resize(N, 0);
   first_path_labeling = first_path_labeling_vec.begin();
+
+  best_path_labeling_vec.clear();
   best_path_labeling_vec.resize(N, 0);
   best_path_labeling = best_path_labeling_vec.begin();
 
@@ -719,22 +689,24 @@ AbstractGraph::search(const bool canonical, Stats& stats)
   /*
    * Allocate the inverses of the "first path" and "best path" labelings
    */
-  if(first_path_labeling_inv) free(first_path_labeling_inv);
-  first_path_labeling_inv = (unsigned int*)calloc(N, sizeof(unsigned int));
-  if(!first_path_labeling_inv) _OUT_OF_MEMORY();
-  if(best_path_labeling_inv) free(best_path_labeling_inv);
-  best_path_labeling_inv = (unsigned int*)calloc(N, sizeof(unsigned int));
-  if(!best_path_labeling_inv) _OUT_OF_MEMORY();
+  first_path_labeling_inv_vec.clear();
+  first_path_labeling_inv_vec.resize(N, 0);
+  first_path_labeling_inv = first_path_labeling_inv_vec.begin();
+
+  best_path_labeling_inv_vec.clear();
+  best_path_labeling_inv_vec.resize(N, 0);
+  best_path_labeling_inv = best_path_labeling_inv_vec.begin();
 
   /*
    * Allocate space for the automorphisms
    */
-  if(first_path_automorphism) free(first_path_automorphism);
-  first_path_automorphism = (unsigned int*)malloc(N * sizeof(unsigned int));
-  if(!first_path_automorphism) _OUT_OF_MEMORY();
-  if(best_path_automorphism) free(best_path_automorphism);
-  best_path_automorphism = (unsigned int*)malloc(N * sizeof(unsigned int));
-  if(!best_path_automorphism) _OUT_OF_MEMORY();
+  first_path_automorphism_vec.clear();
+  first_path_automorphism_vec.resize(N);
+  first_path_automorphism = first_path_automorphism_vec.begin();
+
+  best_path_automorphism_vec.clear();
+  best_path_automorphism_vec.resize(N);
+  best_path_automorphism = best_path_automorphism_vec.begin();
 
   /*
    * Initialize orbit information so that all vertices are in their own orbits
@@ -944,7 +916,7 @@ AbstractGraph::search(const bool canonical, Stats& stats)
           else if(current_node.needs_long_prune)
             {
               current_node.needs_long_prune = false;
-              unsigned int begin = (current_node.long_prune_begin>long_prune_begin)?current_node.long_prune_begin:long_prune_begin;
+              begin = (current_node.long_prune_begin>long_prune_begin)?current_node.long_prune_begin:long_prune_begin;
               for(unsigned int i = begin; i < long_prune_end; i++)
                 {
                   const std::vector<bool>& fixed = long_prune_get_fixed(i);
@@ -961,7 +933,7 @@ AbstractGraph::search(const bool canonical, Stats& stats)
                       continue;
                     }
                   const std::vector<bool>& mcrs = long_prune_get_mcrs(i);
-                  unsigned int* ep = p.elements + cell->first;
+                  uint_pointer_substitute ep = p.elements + cell->first;
                   for(unsigned int j = cell->length; j > 0; j--, ep++) {
                     if(mcrs[*ep] == false)
                       current_node.long_prune_redundant.insert(*ep);
@@ -977,8 +949,8 @@ AbstractGraph::search(const bool canonical, Stats& stats)
        */
       {
         unsigned int  next_split_element = UINT_MAX;
-        unsigned int* next_split_element_pos = 0;
-        unsigned int* ep = p.elements + cell->first;
+        uint_pointer_substitute next_split_element_pos;
+        uint_pointer_substitute ep = p.elements + cell->first;
         if(current_node.fp_on)
           {
             /* Find the next larger splitting element that is
@@ -1368,7 +1340,7 @@ AbstractGraph::search(const bool canonical, Stats& stats)
                         if(old_info.fp_on)
                           goto handle_first_path_automorphism;
                         /* Should never get here because of CR:FP */
-                        _INTERNAL_ERROR();
+                        //_INTERNAL_ERROR();
                       }
                   }
 
@@ -1644,7 +1616,7 @@ AbstractGraph::search(const bool canonical, Stats& stats)
             if(report_hook)
               (*report_hook)(report_user_param,
                              get_nof_vertices(),
-                             best_path_automorphism);
+                             &(*best_path_automorphism));
             /* Update statistics */
             stats.nof_generators++;
           }
@@ -1734,7 +1706,7 @@ AbstractGraph::search(const bool canonical, Stats& stats)
       if(report_hook)
         (*report_hook)(report_user_param,
                        get_nof_vertices(),
-                       first_path_automorphism);
+                       &(*first_path_automorphism));
 
       /* Update statistics */
       stats.nof_generators++;
@@ -1763,9 +1735,12 @@ AbstractGraph::find_automorphisms(Stats& stats, void (*hook)(void *user_param, u
   report_user_param = user_param;
 
   search(false, stats);
+
+  first_path_labeling_vec.clear();
+  best_path_labeling_vec.clear();
 }
 
-std::vector<unsigned int>::iterator
+uint_pointer_to_const_substitute
 AbstractGraph::canonical_form(Stats& stats, void (*hook)(void *user_param, unsigned int n, const unsigned int *aut), void *user_param) {
   report_hook = hook;
   report_user_param = user_param;
@@ -2436,7 +2411,7 @@ Digraph::refine_according_to_invariant(unsigned int (*inv)(const Digraph* const 
     {
 
       Partition::Cell* const next_cell = cell->next_nonsingleton;
-      const unsigned int* ep = p.elements + cell->first;
+      uint_pointer_to_const_substitute ep = p.elements + cell->first;
       for(unsigned int i = cell->length; i > 0; i--, ep++)
         {
           unsigned int ival = inv(this, *ep);
@@ -2480,7 +2455,7 @@ Digraph::split_neighbourhood_of_cell(Partition::Cell* const cell)
       eqref_hash.update(cell->length);
     }
 
-  const unsigned int* ep = p.elements + cell->first;
+  uint_pointer_to_const_substitute ep = p.elements + cell->first;
   for(unsigned int i = cell->length; i > 0; i--)
     {
       const Vertex& v = vertices[*ep++];
@@ -2648,10 +2623,10 @@ Digraph::split_neighbourhood_of_cell(Partition::Cell* const cell)
     {
       for(unsigned int i = p.splitting_queue.size(); i > 0; i--)
         {
-          Partition::Cell* const cell = p.splitting_queue.pop_front();
-          rest.update(cell->first);
-          rest.update(cell->length);
-          p.splitting_queue.push_back(cell);
+          Partition::Cell* const cell2 = p.splitting_queue.pop_front();
+          rest.update(cell2->first);
+          rest.update(cell2->length);
+          p.splitting_queue.push_back(cell2);
         }
       rest.update(failure_recording_fp_deviation);
       failure_recording_fp_deviation = rest.get_value();
@@ -2700,7 +2675,7 @@ Digraph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
         }
       neighbour_cell->max_ival_count++;
 
-      unsigned int* const swap_position =
+      uint_pointer_substitute const swap_position =
         p.elements + neighbour_cell->first + neighbour_cell->length -
         neighbour_cell->max_ival_count;
       *p.in_pos[dest_vertex] = *swap_position;
@@ -2739,8 +2714,8 @@ Digraph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
             p.aux_split_in_two(neighbour_cell,
                                neighbour_cell->length -
                                neighbour_cell->max_ival_count);
-          unsigned int* ep = p.elements + new_cell->first;
-          unsigned int* const lp = p.elements+new_cell->first+new_cell->length;
+          uint_pointer_substitute ep = p.elements + new_cell->first;
+          uint_pointer_substitute const lp = p.elements+new_cell->first+new_cell->length;
           while(ep < lp)
             {
               p.element_to_cell_map[*ep] = new_cell;
@@ -2832,7 +2807,7 @@ Digraph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
         }
       neighbour_cell->max_ival_count++;
 
-      unsigned int* const swap_position =
+      uint_pointer_substitute const swap_position =
         p.elements + neighbour_cell->first + neighbour_cell->length -
         neighbour_cell->max_ival_count;
       *p.in_pos[dest_vertex] = *swap_position;
@@ -2870,8 +2845,8 @@ Digraph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
             p.aux_split_in_two(neighbour_cell,
                                neighbour_cell->length -
                                neighbour_cell->max_ival_count);
-          unsigned int* ep = p.elements + new_cell->first;
-          unsigned int* const lp = p.elements+new_cell->first+new_cell->length;
+          uint_pointer_substitute ep = p.elements + new_cell->first;
+          uint_pointer_substitute const lp = p.elements+new_cell->first+new_cell->length;
           while(ep < lp) {
             p.element_to_cell_map[*ep] = new_cell;
             ep++;
@@ -2998,7 +2973,7 @@ Digraph::is_equitable() const
       if(cell->is_unit())
         continue;
 
-      unsigned int* ep = p.elements + cell->first;
+      uint_pointer_substitute ep = p.elements + cell->first;
       const Vertex& first_vertex = vertices[*ep++];
 
       /* Count outgoing edges of the first vertex for cells */
@@ -3047,7 +3022,7 @@ Digraph::is_equitable() const
       if(cell->is_unit())
         continue;
 
-      unsigned int* ep = p.elements + cell->first;
+      uint_pointer_substitute ep = p.elements + cell->first;
       const Vertex& first_vertex = vertices[*ep++];
 
       /* Count incoming edges of the first vertex for cells */
@@ -4523,7 +4498,7 @@ Graph::refine_according_to_invariant(unsigned int (*inv)(const Graph* const g,
 
       Partition::Cell* const next_cell = cell->next_nonsingleton;
 
-      const unsigned int* ep = p.elements + cell->first;
+      uint_pointer_to_const_substitute ep = p.elements + cell->first;
       for(unsigned int i = cell->length; i > 0; i--, ep++)
         {
           const unsigned int ival = inv(this, *ep);
@@ -4576,7 +4551,7 @@ Graph::split_neighbourhood_of_cell(Partition::Cell* const cell)
       eqref_hash.update(cell->length);
     }
 
-  const unsigned int* ep = p.elements + cell->first;
+  uint_pointer_to_const_substitute ep = p.elements + cell->first;
   for(unsigned int i = cell->length; i > 0; i--)
     {
       const Vertex& v = vertices[*ep++];
@@ -4672,10 +4647,10 @@ Graph::split_neighbourhood_of_cell(Partition::Cell* const cell)
     {
       for(unsigned int i = p.splitting_queue.size(); i > 0; i--)
         {
-          Partition::Cell* const cell = p.splitting_queue.pop_front();
-          rest.update(cell->first);
-          rest.update(cell->length);
-          p.splitting_queue.push_back(cell);
+          Partition::Cell* const cell3 = p.splitting_queue.pop_front();
+          rest.update(cell3->first);
+          rest.update(cell3->length);
+          p.splitting_queue.push_back(cell3);
         }
       rest.update(failure_recording_fp_deviation);
       failure_recording_fp_deviation = rest.get_value();
@@ -4721,7 +4696,7 @@ Graph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
         }
       neighbour_cell->max_ival_count++;
 
-      unsigned int * const swap_position =
+      uint_pointer_substitute const swap_position =
         p.elements + neighbour_cell->first + neighbour_cell->length -
         neighbour_cell->max_ival_count;
       *p.in_pos[dest_vertex] = *swap_position;
@@ -4755,8 +4730,8 @@ Graph::split_neighbourhood_of_unit_cell(Partition::Cell* const unit_cell)
             p.aux_split_in_two(neighbour_cell,
                                neighbour_cell->length -
                                neighbour_cell->max_ival_count);
-          unsigned int *ep = p.elements + new_cell->first;
-          unsigned int * const lp = p.elements+new_cell->first+new_cell->length;
+          uint_pointer_substitute ep = p.elements + new_cell->first;
+          uint_pointer_substitute const lp = p.elements+new_cell->first+new_cell->length;
           while(ep < lp)
             {
               p.element_to_cell_map[*ep] = new_cell;
@@ -4887,7 +4862,7 @@ bool Graph::is_equitable() const
       if(cell->is_unit())
         continue;
 
-      unsigned int *ep = p.elements + cell->first;
+      uint_pointer_substitute ep = p.elements + cell->first;
       const Vertex &first_vertex = vertices[*ep++];
 
       /* Count how many edges lead from the first vertex to

@@ -6,9 +6,9 @@
 /*
   Copyright (c) 2003-2015 Tommi Junttila
   Released under the GNU Lesser General Public License version 3.
-  
+
   This file is part of bliss.
-  
+
   bliss is free software: you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as published by
   the Free Software Foundation, version 3 of the License.
@@ -22,7 +22,7 @@
   along with bliss.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-namespace bliss {
+namespace bliss_digraphs {
 
 /** \internal
  * \brief A hash for sequences of unsigned ints.
@@ -35,7 +35,7 @@ public:
   UintSeqHash() {h = 0; }
   UintSeqHash(const UintSeqHash &other) {h = other.h; }
   UintSeqHash& operator=(const UintSeqHash &other) {h = other.h; return *this; }
-  
+
   /** Reset the hash value. */
   void reset() {h = 0; }
 
@@ -60,6 +60,6 @@ public:
 };
 
 
-} // namespace bliss
+} // namespace bliss_digraphs
 
 #endif
