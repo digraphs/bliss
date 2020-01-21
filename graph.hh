@@ -649,7 +649,7 @@ protected:
 
   void initialize_certificate();
 
-  bool is_automorphism(unsigned int* const perm);
+  bool is_automorphism(uint_pointer_substitute const perm);
 
 
   bool nucr_find_first_component(const unsigned int level);
@@ -904,7 +904,7 @@ protected:
 
   void initialize_certificate();
 
-  bool is_automorphism(unsigned int* const perm);
+  bool is_automorphism(uint_pointer_substitute const perm);
 
   void sort_edges();
 
