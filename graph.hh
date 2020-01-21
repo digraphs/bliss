@@ -829,6 +829,7 @@ protected:
   };
   std::vector<Vertex> vertices;
 
+public:
   void clear() {
     for (std::vector<Vertex>::iterator it = vertices.begin();
          it < vertices.end();
@@ -836,7 +837,7 @@ protected:
       it->clear();
     }
   }
-
+protected:
   void remove_duplicate_edges();
 
   /** \internal
